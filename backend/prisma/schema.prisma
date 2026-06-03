@@ -1,14 +1,28 @@
 // ============================================================
-// schema.prisma — MMS v5.2
-// แก้ไขจาก v5.1:
-//   Fix: RequirementLevel (S/B/A/A1) → RequirementType (M/R/X/O)
-//        ตรงกับ symbol จริงใน Excel ของแต่ละ client
-//        Chevron: X = Minimum Required, O = Assigned by company
-//        Erawan:  M = Mandatory, R = Relevant person only
-//        PTT:     X (ไม่มี note — เก็บเป็น required)
-//        Valeura: X (ไม่มี note — เก็บเป็น required)
-//   Fix: PositionRequirement เพิ่ม sourceMatrixCode + sourceMatrixSheet
-//        สำหรับ audit trail และ debug
+// schema.prisma — MMS v5.7
+// แก้ไขจาก v5.4→v5.5:
+//   Fix: ลบ Company model + companyId ออกทั้งหมด (single-company)
+//   Fix: Client.name → @unique
+// แก้ไขจาก v5.5→v5.6:
+//   Fix: Employee.status String → EmployeeStatus enum (active/inactive/resigned/suspended)
+//   Fix: Booking.status String → BookingStatus enum (pending/approved/deployed/cancelled)
+//   Fix: ClientApproval.status String → ApprovalStatus enum (pending/approved/rejected)
+//   Fix: เพิ่ม Passport model — ใช้ใน Matching Engine (CV/Cert/Passport/Medical)
+//        passport relation เพิ่มใน Employee (optional 1-to-1)
+// ── SCHEMA FREEZE v5.6 — พร้อม Module 1 Matching Engine ──
+// แก้ไขจาก v5.2:
+//   Fix: TrainingMethod enum (INHOUSE/PUBLIC) + field ใน TrainingStandard -> XXXลบออกXXX
+//   Fix: TrainingStandard validityMonths → validityDays + trainingHours
+//   Fix: TrainingSource enum ใหม่ (COMPANY_ELEARNING/TPTI/CONTRACTOR/PUBLIC)
+//   Fix: ลบ source[] ออกจาก GlobalTraining (เก็บใน TrainingStandard แทน)
+//   Fix: EmployeeTraining.globalTrainingId → nullable (String?)
+//        เพิ่ม rawTrainingName String? — เก็บชื่อดิบจาก Excel ทุก record
+//        ลบ @@unique ที่มี nullable field — ใช้ index แทน
+// แก้ไขจาก v5.4:
+//   Fix: ลบ Company model + companyId ออกทั้งหมด
+//        ระบบ single-company (EXPERTEAM only) — ไม่มี multi-tenant อีกต่อไป
+//        Client ไม่ผูกกับ Company แล้ว, Subcontractor ไม่ผูกกับ Company แล้ว
+//        ลบ @@unique([name, companyId]) ใน Client → ใช้ code @unique แทน
 // ============================================================
 
 generator client {
@@ -51,6 +65,7 @@ enum AssignmentStatus {
   planned
   active
   completed
+  cancelled
 }
 
 enum CheckStatus {
@@ -62,6 +77,14 @@ enum CheckStatus {
   not_required
 }
 
+enum AvailabilityStatus {
+  available
+  assigned
+  leave
+  training
+  medical_hold
+}
+
 enum TrainingStatus {
   completed // ปกติ — cert ยังไม่หมด
   due_soon // Due date — ใกล้หมดอายุ
@@ -71,11 +94,24 @@ enum TrainingStatus {
   not_applicable // N/A
 }
 
+// TrainingSource — ประเภท standard owner (ไม่ hardcode client names)
+// xxxCLIENT_INTERNAL: internal standard ของ client → ดูจาก clientId ใน TrainingStandard
+// TPTI:           Thai Petroleum Training Institute
+// CONTRACTOR:     external vendor/contractor ทั่วไป
+// PUBLIC:         สถาบันภายนอกอื่น (API, AWS, NACE, Swagelok ฯลฯ)
+// → เพิ่ม client ใหม่ได้โดยไม่ต้อง migrate enum เพียงแค่ insert Client row ใหม่
 enum TrainingSource {
+  COMPANY
   COMPANY_ELEARNING
-  TPTI
-  CONTRACTOR
-  PUBLIC
+  TPTI // Thai Petroleum Training Institute
+  CONTRACTOR // external vendor/contractor
+  PUBLIC // external authority อื่น (API, AWS, NACE ฯลฯ)
+}
+
+enum CandidateSource {
+  internal
+  ces
+  contractor
 }
 
 // แก้ไข: RequirementLevel (S/B/A/A1) → RequirementType (M/R/X/O)
@@ -135,6 +171,26 @@ enum MobilizationTaskStatus {
   not_required
 }
 
+enum EmployeeStatus {
+  active
+  inactive
+  resigned
+  suspended
+}
+
+enum BookingStatus {
+  pending
+  approved
+  deployed
+  cancelled
+}
+
+enum ApprovalStatus {
+  pending
+  approved
+  rejected
+}
+
 // ─────────────────────────────────────────────────────────
 // USER & RBAC
 // ─────────────────────────────────────────────────────────
@@ -148,13 +204,11 @@ model User {
   roleId String
   role   Role   @relation(fields: [roleId], references: [id])
 
-  companyId String?
-  company   Company? @relation(fields: [companyId], references: [id])
-
   employeeId String?   @unique
   employee   Employee? @relation(fields: [employeeId], references: [id])
 
-  requests  ManpowerRequest[] @relation("UserRequests")
+  requests ManpowerRequest[] @relation("UserRequests")
+
   logs      WorkflowLog[]
   decisions ClientApproval[]
 
@@ -189,38 +243,23 @@ model RolePermission {
   @@id([roleId, permissionId])
 }
 
-// ─────────────────────────────────────────────────────────
-// COMPANY
-// ─────────────────────────────────────────────────────────
-
-model Company {
-  id   String @id @default(uuid())
-
-  name String @unique // "CES", "EXPERTEAM"
-
-  type String         // "main" / "subcontractor"
-
-  employees      Employee[]
-  users          User[]
-  clients        Client[]
-  subcontractors Subcontractor[]
-}
+// COMPANY model ถูกลบออกแล้ว (v5.5)
+// ระบบเปลี่ยนเป็น single-company (EXPERTEAM) ไม่มี multi-tenant
+// CES จะเป็น Subcontractor ใน workflow ไม่ใช่ Company แยก
 
 // ─────────────────────────────────────────────────────────
 // CLIENT
 // ─────────────────────────────────────────────────────────
 
 model Client {
-  id String @id @default(uuid())
-
-  name String
-  code String @unique
-
-  companyId String?
-  company   Company? @relation(fields: [companyId], references: [id])
+  id        String  @id @default(uuid())
+  name      String  @unique // "Chevron" / "PTTEP" / "PTT" / "Valeura"
+  shortName String? // "CHV" / "ER" / "PTT" / "VAL"
+  type      String // "offshore" / "onshore" / "both"
 
   contracts           Contract[]
   medicalRequirements MedicalRequirement[]
+  trainingStandards   TrainingStandard[]
 
   createdAt DateTime @default(now())
 }
@@ -233,20 +272,23 @@ model Client {
 // ─────────────────────────────────────────────────────────
 
 model Contract {
-  id String @id @default(uuid())
-
-  name       String
-  contractNo String
-
+  id       String @id @default(uuid())
   clientId String
   client   Client @relation(fields: [clientId], references: [id])
 
-  // Relations
+  contractNo    String? // เลขที่สัญญา
+  name          String // "Erawan Offshore 2025", "Chevron CPP 2025"
+  type          ContractType
+  matrixVersion String? // "Rev07" / "V15" / "Review 02"
+  matrixDate    DateTime?
+
+  startDate DateTime?
+  endDate   DateTime?
+  isActive  Boolean   @default(true)
+
+  projects             Project[]
   clientTrainings      ClientTraining[]
   positionRequirements PositionRequirement[]
-  projects             Project[]
-
-  isActive Boolean @default(true)
 
   createdAt DateTime @default(now())
 
@@ -280,16 +322,17 @@ model Employee {
   empCode    String  @unique
   fullName   String
   fullNameTH String?
+  fullNameEN String?
 
-  status     String  @default("active")
-  division   String? // "Scaffold&Paint", "Mechanical"
-  isOffshore Boolean @default(false)
+  startWorkDate DateTime?
+
+  status             EmployeeStatus     @default(active)
+  availabilityStatus AvailabilityStatus @default(available)
+  division           String? // "Scaffold&Paint", "Mechanical"
+  isOffshore         Boolean            @default(false)
 
   positionId String?
   position   Position? @relation("PrimaryPosition", fields: [positionId], references: [id])
-
-  companyId String?
-  company   Company? @relation(fields: [companyId], references: [id])
 
   user User?
 
@@ -301,10 +344,11 @@ model Employee {
   skills        EmployeeSkill[]
   safetyChecks  SafetyCheck[]
 
+  passport           Passport?
   candidates         Candidate[]
   assignments        Assignment[]
   bookings           Booking[]
-  subcontractorHires SubcontractorHire[] // Fix 2
+  subcontractorHires SubcontractorHire[]
 
   createdAt DateTime @default(now())
 }
@@ -316,14 +360,15 @@ model Employee {
 // ─────────────────────────────────────────────────────────
 
 model GlobalTraining {
-  id       String  @id @default(uuid())
-  name     String  @unique // canonical name
-  fullName String?
-
+  id          String  @id @default(uuid())
+  name        String  @unique // canonical name — dedup ข้าม client
+  fullName    String? // ชื่อเต็มจาก Excel (for display)
   description String?
 
-  trainingStandards TrainingStandard[]
+  // source ไม่เก็บที่นี่ — อยู่ใน TrainingStandard แทน
+  // GlobalTraining คือ canonical name กลาง ไม่รู้จัก client/source
 
+  trainingStandards TrainingStandard[]
   clientTrainings   ClientTraining[]
   employeeTrainings EmployeeTraining[]
   candidateGaps     CandidateGap[] // FIX A: FK จาก CandidateGap
@@ -341,14 +386,17 @@ model TrainingStandard {
   id String @id @default(uuid())
 
   globalTrainingId String
+  source           TrainingSource // CLIENT_INTERNAL / TPTI / CONTRACTOR / PUBLIC
 
-  source TrainingSource?
+  // clientId — ใช้เมื่อ source = CLIENT_INTERNAL เท่านั้น
+  // ระบุว่าเป็น internal standard ของ client ไหน (PTT, Valeura, Chevron ฯลฯ)
+  // null = standard ไม่ผูกกับ client ใดโดยเฉพาะ (เช่น TPTI, CONTRACTOR)
+  clientId String?
+  client   Client? @relation(fields: [clientId], references: [id])
 
-  trainingHours Float?
-
-  validityDays Int?
-
-  isNoExpiry Boolean @default(false)
+  trainingHours Int? // ชั่วโมงอบรม
+  validityDays  Int? // อายุ cert เป็นวัน
+  isNoExpiry    Boolean @default(false)
 
   globalTraining GlobalTraining @relation(fields: [globalTrainingId], references: [id])
 
@@ -356,7 +404,10 @@ model TrainingStandard {
 
   createdAt DateTime @default(now())
 
-  @@index([globalTrainingId, source])
+  // unique ต่อ training + source + client
+  // รองรับ: training เดียวกัน มี standard ต่างกันตาม client
+  // เช่น PTW ของ PTT กับ PTW ของ Erawan คือคนละ standard
+  @@unique([globalTrainingId, source, clientId])
 }
 
 model ClientTraining {
@@ -366,7 +417,7 @@ model ClientTraining {
 
   nameAlias String? // ชื่อที่ใช้ใน Excel ของ client นี้
 
-  completionPeriodCode String? // B / A / A1 / A2 / S / O // Training completion timing from matrix
+  completionPeriodCode String?
 
   trainingStandardId String
 
@@ -416,10 +467,10 @@ model PositionRequirement {
 // ─────────────────────────────────────────────────────────
 
 model MedicalRequirement {
-  id           String @id @default(uuid())
-  clientId     String
-  name         String // "Medical Check up (Chevron) 1 YEAR"
-  validityDays Int
+  id             String @id @default(uuid())
+  clientId       String
+  name           String // "Medical Check up (Chevron) 1 YEAR"
+  validityMonths Int
 
   client        Client         @relation(fields: [clientId], references: [id])
   checks        MedicalCheck[]
@@ -429,16 +480,23 @@ model MedicalRequirement {
 }
 
 // ─────────────────────────────────────────────────────────
-// FIX 2 + FIX C: EMPLOYEE TRAINING RECORD
-// unique = employeeId + globalTrainingId + contractId + version
+// FIX 2 + FIX C + v5.4: EMPLOYEE TRAINING RECORD
 // isLatest = true → record ที่ใช้งานจริง
 // isLatest = false → history (audit trail)
+//
+// globalTrainingId nullable — รองรับ cert ที่ยังไม่มี mapping
+// rawTrainingName — เก็บชื่อดิบจาก Excel เมื่อ globalTrainingId = null
+//
+// Two cases:
+//   mapped:   globalTrainingId = uuid, rawTrainingName = original Excel name
+//   unmapped: globalTrainingId = null, rawTrainingName = original Excel name
 // ─────────────────────────────────────────────────────────
 
 model EmployeeTraining {
   id               String  @id @default(uuid())
   employeeId       String
-  globalTrainingId String
+  globalTrainingId String? // null = ยังไม่มี canonical mapping
+  rawTrainingName  String? // ชื่อดิบจาก Excel — เก็บเสมอเพื่อ audit
   contractId       String? // null = record ทั่วไป ไม่ผูก contract
   clientTrainingId String? // อ้างอิง ClientTraining (optional)
 
@@ -451,6 +509,8 @@ model EmployeeTraining {
   source     String? // "excel_import" / "manual" / "hr_system"
   sourceFile String? // ชื่อไฟล์ Excel
 
+  institute String?
+
   // FIX C: version history — ไม่ลบ record เก่า แต่ mark isLatest = false
   // เมื่อ update cert ใหม่ → สร้าง record ใหม่ version+1, isLatest=true
   //                        → record เก่า isLatest=false (ยังอยู่ใน DB)
@@ -458,16 +518,17 @@ model EmployeeTraining {
   isLatest Boolean @default(true) // query ปกติ filter isLatest=true เสมอ
 
   employee       Employee        @relation(fields: [employeeId], references: [id])
-  globalTraining GlobalTraining  @relation(fields: [globalTrainingId], references: [id])
+  globalTraining GlobalTraining? @relation(fields: [globalTrainingId], references: [id])
   clientTraining ClientTraining? @relation("ClientTrainingRecord", fields: [clientTrainingId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // unique ต่อ version — ทำให้ history ไม่ชนกัน
-  @@unique([employeeId, globalTrainingId, contractId, version])
-  // index เพื่อ query เร็ว (filter isLatest=true บ่อย)
+  // ลบ @@unique ที่มี nullable field ออก
+  // เพราะ PostgreSQL: NULL != NULL → duplicate ได้ไม่ถูก enforce
+  // ใช้ index แทน + enforce uniqueness ที่ application layer
   @@index([employeeId, globalTrainingId, isLatest])
+  @@index([employeeId, isLatest])
   @@index([expiryDate, isLatest]) // สำหรับ cert alert / due_soon query
 }
 
@@ -482,6 +543,7 @@ model MedicalCheck {
 
   checkType  String // "Medical Check up" / "Confined Space Entry"
   hospital   String?
+  formType String?
   issuedDate DateTime?
   expiryDate DateTime?
   remindDate DateTime?
@@ -585,7 +647,8 @@ model ManpowerRequest {
   sseRecords            SSERecord[] // ADD 1
   subcontractorRequests SubcontractorRequest[] // ADD 2
 
-  createdAt DateTime @default(now())
+  createdAt   DateTime      @default(now())
+  WorkflowLog WorkflowLog[]
 }
 
 // ─────────────────────────────────────────────────────────
@@ -612,8 +675,8 @@ model Candidate {
   roundId    String
   employeeId String
 
-  sourceType String
-  status     MatchStatus @default(proposed)
+  sourceType CandidateSource
+  status     MatchStatus     @default(proposed)
 
   // FIX B: ย้าย score ออกไป CandidateScore แทน
   // totalScore และ matchPct คำนวณจาก score breakdown
@@ -668,11 +731,11 @@ model CandidateGap {
 // ─────────────────────────────────────────────────────────
 
 model ClientApproval {
-  id          String  @id @default(uuid())
-  candidateId String  @unique
+  id          String         @id @default(uuid())
+  candidateId String         @unique
   requestId   String
   decidedById String?
-  status      String
+  status      ApprovalStatus @default(pending)
   comment     String?
 
   candidate Candidate       @relation(fields: [candidateId], references: [id])
@@ -687,14 +750,15 @@ model ClientApproval {
 // ─────────────────────────────────────────────────────────
 
 model Booking {
-  id         String  @id @default(uuid())
+  id         String @id @default(uuid())
   requestId  String
   employeeId String
-  status     String // pending / approved / deployed
-  approvedBy String?
 
-  request           ManpowerRequest    @relation(fields: [requestId], references: [id])
-  employee          Employee           @relation(fields: [employeeId], references: [id])
+  status BookingStatus @default(pending)
+
+  request  ManpowerRequest @relation(fields: [requestId], references: [id])
+  employee Employee        @relation(fields: [employeeId], references: [id])
+
   assignment        Assignment?
   mobilizationTasks MobilizationTask[] // ADD 3
 
@@ -714,19 +778,51 @@ model Assignment {
 }
 
 // ─────────────────────────────────────────────────────────
+// PASSPORT
+// ใช้ใน Matching Engine — Passport หมดอายุ = ไม่ผ่าน deploy
+// ─────────────────────────────────────────────────────────
+
+model Passport {
+  id         String @id @default(uuid())
+  employeeId String @unique // 1 employee = 1 passport ปัจจุบัน
+
+  passportNo String?
+
+  issueDate  DateTime?
+  expiryDate DateTime?
+
+  // status คำนวณ runtime จาก expiryDate ไม่ต้อง store
+  // แต่ถ้าอยากเก็บ snapshot ใช้ CheckStatus ได้
+  status CheckStatus @default(pending)
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────────────────
 // WORKFLOW LOG
 // ─────────────────────────────────────────────────────────
 
 model WorkflowLog {
-  id        String  @id @default(uuid())
+  id String @id @default(uuid())
+
   requestId String
   userId    String?
-  action    String
-  comment   String?
+
+  action  String
+  comment String?
 
   user User? @relation(fields: [userId], references: [id])
 
+  request ManpowerRequest @relation(fields: [requestId], references: [id])
+
   createdAt DateTime @default(now())
+
+  @@index([requestId])
+  @@index([userId])
+  @@index([createdAt])
 }
 
 // ─────────────────────────────────────────────────────────
@@ -764,15 +860,14 @@ model Subcontractor {
   contactTel   String?
   contactEmail String?
 
-  companyId String?
-  company   Company? @relation(fields: [companyId], references: [id])
-
   isActive Boolean @default(true)
   notes    String?
 
   requests SubcontractorRequest[]
 
   createdAt DateTime @default(now())
+
+  priority Int @default(99)
 }
 
 model SubcontractorRequest {

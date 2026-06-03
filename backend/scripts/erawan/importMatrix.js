@@ -14,7 +14,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const FILE_PATH = path.join(
   __dirname,
-  "../../../training_record_from_hr/Employee Training Offshore-Erawan 31-3-2026-2.xlsx",
+  "../../../training_record_from_hr/clean/Employee Training Offshore-Erawan 31-3-2026-CLEAN.xlsx",
 );
 
 const TRAINING_MAPPING_FILE = path.join(
@@ -138,6 +138,8 @@ async function createPositionRequirement(
   positionName,
   trainingName,
   requirementType,
+  sourceMatrixCode,
+  sourceMatrixSheet,
 ) {
   // =======================================================
   // Position
@@ -211,13 +213,19 @@ async function createPositionRequirement(
 
     update: {
       requirementType,
+      sourceMatrixCode,
+      sourceMatrixSheet,
     },
 
     create: {
       positionId: position.id,
       clientTrainingId: clientTraining.id,
       contractId: contract.id,
+
       requirementType,
+
+      sourceMatrixCode,
+      sourceMatrixSheet,
     },
   });
 
@@ -331,6 +339,8 @@ async function importMatrix() {
             positionName,
             training.trainingName,
             mappedRequirementType,
+            cellValue,
+            SHEET_NAME,
           );
         } catch (err) {
           console.error(

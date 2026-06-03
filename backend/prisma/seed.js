@@ -318,71 +318,25 @@ async function main() {
 
   console.log(`   ✓ ${rpData.length} role-permission mappings`);
 
-  // ── 4. Companies ─────────────────────────────────────────
-  console.log("4️⃣ Seeding companies...");
-
-  await prisma.company.createMany({
-    data: [
-      { name: "CES", type: "construction" },
-      { name: "EXPERTEAM", type: "maintenance" },
-    ],
-    skipDuplicates: true,
-  });
-
-  const cesCompany = await prisma.company.findFirst({
-    where: {
-      name: "CES",
-    },
-  });
-
-  const expertCompany = await prisma.company.findFirst({
-    where: {
-      name: "EXPERTEAM",
-    },
-  });
-
-  if (!cesCompany || !expertCompany) {
-    throw new Error("Company not found");
-  }
-
-  console.log("   ✓ Companies seeded");
-
   // ── 5. Admin Users ───────────────────────────────────────
-  console.log("5️⃣ Seeding admin users...");
+  console.log("4️⃣ Seeding admin user...");
 
   const hashedPassword = await bcrypt.hash("admin1234", 10);
 
-  // CES Admin
   await prisma.user.upsert({
     where: {
-      email: "admin_ces@mms.com",
+      email: "admin@mms.com",
     },
     update: {},
     create: {
-      name: "Admin CES",
-      email: "admin_ces@mms.com",
+      name: "System Admin",
+      email: "admin@mms.com",
       password: hashedPassword,
       roleId: adminRoleId,
-      companyId: cesCompany.id,
     },
   });
 
-  // EXPERT Admin
-  await prisma.user.upsert({
-    where: {
-      email: "admin_expert@mms.com",
-    },
-    update: {},
-    create: {
-      name: "Admin EXPERT",
-      email: "admin_expert@mms.com",
-      password: hashedPassword,
-      roleId: adminRoleId,
-      companyId: expertCompany.id,
-    },
-  });
-
-  console.log("   ✓ Admin users seeded");
+  console.log("   ✓ Admin user seeded");
 
   // ── Summary ──────────────────────────────────────────────
   console.log("\n✅ Seed complete!");
@@ -390,13 +344,8 @@ async function main() {
   console.log(`   Permissions : ${allPerms.length}`);
   console.log(`   Mappings    : ${rpData.length}`);
 
-  console.log("\n👤 Default Admin Accounts");
-  console.log("   admin_ces@mms.com / admin1234");
-  console.log("   admin_expert@mms.com / admin1234");
-
-  console.log("\n🏢 Companies");
-  console.log(`   CES       : ${cesCompany.id}`);
-  console.log(`   EXPERTEAM : ${expertCompany.id}`);
+  console.log("\n👤 Default Admin Account");
+  console.log("   admin@mms.com / admin1234");
 }
 
 main()

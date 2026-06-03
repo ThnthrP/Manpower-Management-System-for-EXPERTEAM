@@ -1,79 +1,59 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, ContractType } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 async function seedContracts() {
   console.log("🚀 Seeding Contracts...");
 
-  // =========================================================
-  // Clients
-  // =========================================================
-
   const erawan = await prisma.client.findUnique({
-    where: { code: "ERAWAN" },
+    where: { name: "Erawan" },
   });
 
   const chevron = await prisma.client.findUnique({
-    where: { code: "CHEVRON" },
+    where: { name: "Chevron" },
   });
 
   const ptt = await prisma.client.findUnique({
-    where: { code: "PTT" },
+    where: { name: "PTT" },
   });
 
   const valeura = await prisma.client.findUnique({
-    where: { code: "VALEURA" },
+    where: { name: "Valeura" },
   });
 
   if (!erawan || !chevron || !ptt || !valeura) {
     throw new Error("Some clients not found");
   }
 
-  // =========================================================
-  // Contracts
-  // =========================================================
-
   const CONTRACTS = [
-    // =========================
-    // Erawan
-    // =========================
     {
       name: "Erawan Offshore 2026",
       contractNo: "ER-2026",
       clientId: erawan.id,
+      type: ContractType.manpower_supply,
     },
 
-    // =========================
-    // Chevron
-    // =========================
     {
       name: "Chevron Matrix 2025",
       contractNo: "CHV-2025",
       clientId: chevron.id,
+      type: ContractType.manpower_supply,
     },
 
-    // =========================
-    // PTT
-    // =========================
     {
       name: "PTT Matrix 2025",
       contractNo: "PTT-2025",
       clientId: ptt.id,
+      type: ContractType.manpower_supply,
     },
 
-    // =========================
-    // Valeura
-    // =========================
     {
       name: "Valeura Matrix 2024",
       contractNo: "VAL-2024",
       clientId: valeura.id,
+      type: ContractType.manpower_supply,
     },
   ];
-
-  // =========================================================
-  // Upsert
-  // =========================================================
 
   for (const contract of CONTRACTS) {
     await prisma.contract.upsert({
@@ -86,6 +66,7 @@ async function seedContracts() {
 
       update: {
         name: contract.name,
+        type: contract.type,
       },
 
       create: {
@@ -97,12 +78,13 @@ async function seedContracts() {
     console.log(`✔ ${contract.name}`);
   }
 
-  console.log("✅ Done seeding Contracts");
+  console.log(`✅ Done seeding Contracts (${CONTRACTS.length})`);
 }
 
 seedContracts()
   .catch((err) => {
     console.error("💥 Seed failed:", err);
+    process.exit(1);
   })
   .finally(async () => {
     await prisma.$disconnect();

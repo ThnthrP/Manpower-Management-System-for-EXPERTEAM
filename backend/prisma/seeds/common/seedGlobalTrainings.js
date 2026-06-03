@@ -108,6 +108,16 @@ async function seedGlobalTrainings() {
 
     "Safety Orientation - Incident Reporting, BBS, HazOb, SWC",
 
+    // Chevron - add from matrix / employee records
+
+    "Control of Work Training (CoW)",
+
+    "Helicopter Fire Fighting",
+
+    "R550 Device Operation",
+
+    "Basic Rigging (by Settapat)",
+
     // ======================================================
     // Erawan
     // ======================================================
@@ -278,18 +288,31 @@ async function seedGlobalTrainings() {
 
     "Harzop CARD System (HOC) ERP & PRP",
 
+    // PTT - add from employee records
+
+    "Occupational Safety Officer at Management Level",
+
+    "Occupational Safety Officer at Technical Level",
+
+    "Coating Inspector",
+
+    "Welding Qualification Test",
+
     // ======================================================
     // Valeura
     // ======================================================
 
     "Safety Awareness at Mubadala",
 
-    "Fire watcher Awareness",
+    "Fire Watch Awareness",
 
-    "HSSE requirement for contractor",
+    "HSSE Requirements for Contractors",
   ];
 
-  for (const name of TRAININGS) {
+  // for (const name of TRAININGS) {
+  const UNIQUE_TRAININGS = [...new Set(TRAININGS)].sort();
+
+  for (const name of UNIQUE_TRAININGS) {
     await prisma.globalTraining.upsert({
       where: {
         name,
@@ -305,7 +328,8 @@ async function seedGlobalTrainings() {
     console.log(`✔ ${name}`);
   }
 
-  console.log("✅ Done seeding Global Trainings");
+  // console.log("✅ Done seeding Global Trainings");
+  console.log(`✅ Done seeding Global Trainings (${UNIQUE_TRAININGS.length})`);
 }
 
 seedGlobalTrainings()

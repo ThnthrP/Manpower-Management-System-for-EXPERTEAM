@@ -13,10 +13,24 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const FILE_PATH = path.join(
   __dirname,
-  "../../../training_record_from_hr/Employee Training Offshore-Erawan 31-3-2026-2.xlsx",
+  "../../../training_record_from_hr/clean/Employee Training Offshore-Erawan 31-3-2026-CLEAN.xlsx",
 );
 
 const SHEET_NAME = "Erawan 26-3-26";
+
+const POSITION_MAPPINGS = {
+  "Rigger/Scaffolder": "Rigger / Scaffolder",
+
+  "Scaffolding & Painting Foreman": "Scaffold & Paint Foreman",
+
+  "Technical Assistant/Project coordinator":
+    "Technical Assistant / Project Coordinator",
+
+  "Blaster/Painter": "Blaster / Painter",
+
+  'Crane Operator Class "A"': "Crane Operator Class A",
+  'Crane Operator Class "B"': "Crane Operator Class B",
+};
 
 // =========================================================
 // Helpers
@@ -31,23 +45,19 @@ function cleanText(value) {
 function normalizePosition(positionName) {
   if (!positionName) return null;
 
-  let name = cleanText(positionName);
+  const name = cleanText(positionName);
 
-  if (name === "Rigger/Scaffolder") {
-    return "Rigger / Scaffolder";
+  // ======================================================
+  // Exact Match
+  // ======================================================
+
+  if (POSITION_MAPPINGS[name]) {
+    return POSITION_MAPPINGS[name];
   }
 
-  if (name === "Scaffolding & Painting Foreman") {
-    return "Scaffold & Paint Foreman";
-  }
-
-  if (name === "Technical Assistant/Project coordinator") {
-    return "Technical Assistant / Project Coordinator";
-  }
-
-  if (name === "Blaster/Painter") {
-    return "Blaster / Painter";
-  }
+  // ======================================================
+  // Pattern Match
+  // ======================================================
 
   if (name.includes("Firewatch")) {
     return "Fire Watcher";
@@ -64,26 +74,12 @@ function normalizePosition(positionName) {
 // Create Employee
 // =========================================================
 
-async function createEmployee(
+async function createEmployee({
   employeeCode,
-  fullName,
+  fullNameEN,
+  fullNameTH,
   positionName,
-  companyName,
-) {
-  // =======================================================
-  // Company
-  // =======================================================
-
-  const company = await prisma.company.findFirst({
-    where: {
-      name: companyName,
-    },
-  });
-
-  if (!company) {
-    throw new Error(`Company not found: ${companyName}`);
-  }
-
+}) {
   // =======================================================
   // Position
   // =======================================================
@@ -99,29 +95,39 @@ async function createEmployee(
   }
 
   // =======================================================
-  // Upsert
+  // Create Employee
   // =======================================================
 
-  await prisma.employee.upsert({
+  // const employee = await prisma.employee.create({
+  const employee = await prisma.employee.upsert({
     where: {
       empCode: employeeCode,
     },
 
     update: {
-      fullName,
-      companyId: company.id,
+      fullName: fullNameEN || fullNameTH,
+
+      fullNameTH,
+      fullNameEN,
+
       positionId: position.id,
     },
 
     create: {
       empCode: employeeCode,
-      fullName,
-      companyId: company.id,
+
+      fullName: fullNameEN || fullNameTH,
+
+      fullNameTH,
+      fullNameEN,
+
       positionId: position.id,
     },
   });
 
-  console.log(`✔ ${employeeCode} | ${fullName}`);
+  console.log(`✔ Created | ${employee.empCode} | ${fullNameTH}`);
+
+  return employee;
 }
 
 // =========================================================
@@ -130,8 +136,6 @@ async function createEmployee(
 
 async function importEmployees() {
   console.log("🚀 Importing Erawan Employees...");
-
-  const COMPANY_NAME = "EXPERTEAM";
 
   // =======================================================
   // Workbook
@@ -153,23 +157,35 @@ async function importEmployees() {
 
   for (let row = 58; row <= 292; row++) {
     try {
-      const fullNameRaw = sheet[`D${row}`]?.v;
+      // const fullNameRaw = sheet[`D${row}`]?.v;
+      const fullNameENRaw = sheet[`C${row}`]?.v;
+
+      const fullNameTHRaw = sheet[`D${row}`]?.v;
 
       const positionRaw = sheet[`E${row}`]?.v;
 
-      const fullName = cleanText(fullNameRaw);
+      const fullNameEN = cleanText(fullNameENRaw);
+
+      const fullNameTH = cleanText(fullNameTHRaw);
 
       const positionName = normalizePosition(positionRaw);
 
-      if (!fullName || !positionName) {
+      if (!fullNameTH || !positionName) {
         continue;
       }
 
       const employeeCode = `ERW-${String(runningNumber).padStart(4, "0")}`;
 
-      await createEmployee(employeeCode, fullName, positionName, COMPANY_NAME);
-
       runningNumber++;
+
+      await createEmployee({
+        employeeCode,
+
+        fullNameEN,
+        fullNameTH,
+
+        positionName,
+      });
     } catch (err) {
       console.error(`❌ Row ${row}: ${err.message}`);
     }

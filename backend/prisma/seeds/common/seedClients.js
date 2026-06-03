@@ -8,45 +8,54 @@ async function seedClients() {
   const CLIENTS = [
     {
       name: "Chevron",
-      code: "CHEVRON",
+      shortName: "CHV",
+      type: "offshore",
     },
     {
       name: "Erawan",
-      code: "ERAWAN",
+      shortName: "ER",
+      type: "offshore",
     },
     {
       name: "PTT",
-      code: "PTT",
+      shortName: "PTT",
+      type: "onshore",
     },
     {
       name: "Valeura",
-      code: "VALEURA",
+      shortName: "VAL",
+      type: "offshore",
     },
   ];
 
   for (const client of CLIENTS) {
     await prisma.client.upsert({
       where: {
-        code: client.code,
-      },
-      update: {
         name: client.name,
       },
+
+      update: {
+        shortName: client.shortName,
+        type: client.type,
+      },
+
       create: {
         name: client.name,
-        code: client.code,
+        shortName: client.shortName,
+        type: client.type,
       },
     });
 
     console.log(`✔ ${client.name}`);
   }
 
-  console.log("✅ Done seeding Clients");
+  console.log(`✅ Done seeding Clients (${CLIENTS.length})`);
 }
 
 seedClients()
   .catch((err) => {
     console.error("💥 Seed failed:", err);
+    process.exit(1);
   })
   .finally(async () => {
     await prisma.$disconnect();

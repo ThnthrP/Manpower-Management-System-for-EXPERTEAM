@@ -11,12 +11,46 @@ async function seedMedicalRequirements() {
 
   const erawan = await prisma.client.findUnique({
     where: {
-      code: "ERAWAN",
+      name: "Erawan",
     },
   });
 
+  const chevron = await prisma.client.findUnique({
+    where: {
+      name: "Chevron",
+    },
+  });
+
+  const ptt = await prisma.client.findUnique({
+    where: {
+      name: "PTT",
+    },
+  });
+
+  const valeura = await prisma.client.findUnique({
+    where: {
+      name: "Valeura",
+    },
+  });
+
+  // ======================================================
+  // Validate
+  // ======================================================
+
   if (!erawan) {
-    throw new Error("Client not found: ERAWAN");
+    throw new Error("Client not found: Erawan");
+  }
+
+  if (!chevron) {
+    throw new Error("Client not found: Chevron");
+  }
+
+  if (!ptt) {
+    throw new Error("Client not found: PTT");
+  }
+
+  if (!valeura) {
+    throw new Error("Client not found: Valeura");
   }
 
   // ======================================================
@@ -24,16 +58,68 @@ async function seedMedicalRequirements() {
   // ======================================================
 
   const REQUIREMENTS = [
+    // ====================================================
+    // Erawan
+    // ====================================================
+
     {
       clientId: erawan.id,
       name: "Medical Check",
-      validityDays: 365,
+      validityMonths: 12,
     },
 
     {
       clientId: erawan.id,
       name: "Confined Space Entry",
-      validityDays: 365,
+      validityMonths: 12,
+    },
+
+    // ====================================================
+    // Chevron
+    // ====================================================
+
+    {
+      clientId: chevron.id,
+      name: "Medical Check",
+      validityMonths: 12,
+    },
+
+    {
+      clientId: chevron.id,
+      name: "Confined Space Entry",
+      validityMonths: 12,
+    },
+
+    // ====================================================
+    // PTT
+    // ====================================================
+
+    {
+      clientId: ptt.id,
+      name: "Medical Check",
+      validityMonths: 12,
+    },
+
+    {
+      clientId: ptt.id,
+      name: "Confined Space Entry",
+      validityMonths: 12,
+    },
+
+    // ====================================================
+    // Valeura
+    // ====================================================
+
+    {
+      clientId: valeura.id,
+      name: "Medical Check",
+      validityMonths: 12,
+    },
+
+    {
+      clientId: valeura.id,
+      name: "Confined Space Entry",
+      validityMonths: 12,
     },
   ];
 
@@ -51,7 +137,7 @@ async function seedMedicalRequirements() {
       },
 
       update: {
-        validityDays: req.validityDays,
+        validityMonths: req.validityMonths,
       },
 
       create: req,
@@ -60,12 +146,13 @@ async function seedMedicalRequirements() {
     console.log(`✔ ${req.name}`);
   }
 
-  console.log("✅ Done seeding Medical Requirements");
+  console.log(`✅ Done seeding Medical Requirements (${REQUIREMENTS.length})`);
 }
 
 seedMedicalRequirements()
   .catch((err) => {
     console.error("💥 Seed failed:", err);
+    process.exit(1);
   })
   .finally(async () => {
     await prisma.$disconnect();

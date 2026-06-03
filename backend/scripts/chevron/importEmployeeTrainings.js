@@ -14,52 +14,64 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const FILE_PATH = path.join(
   __dirname,
-  "../../../training_record_from_hr/clean/Employee Training Offshore-Erawan 31-3-2026-CLEAN.xlsx",
+  "../../../training_record_from_hr/clean/Employee Training Offshore-Chevron 31-3-2026-CLEAN.xlsx",
 );
 
-// const TRAINING_MAPPING_FILE = path.join(
-//   __dirname,
-//   "../../../training_record_from_hr/importErawan.xlsx",
-// );
+const CLIENT_NAME = "Chevron";
 
-const CLIENT_NAME = "Erawan";
-
-const SHEET_NAME = "Erawan 26-3-26";
+const SHEET_NAME = "Record";
 
 // ============================================================
 // Excel Structure
 // ============================================================
 
+// const COL = {
+//   FULL_NAME_EN: 2, // C
+//   FULL_NAME_TH: 3, // D
+//   POSITION: 4, // E
+
+//   MEDICAL_HOSP: 6, // G
+//   MEDICAL_ISSUE: 7, // H
+//   MEDICAL_EXP: 8, // I
+//   MEDICAL_OK: 10, // K
+
+//   COVID_VACCINE: 11, // L
+
+//   PDPA_CONSENT: 23, // X
+
+//   TRAINING_START: 24, // Y
+// };
+
 const COL = {
-  FULL_NAME_EN: 2,
-  FULL_NAME_TH: 3,
-  POSITION: 4,
+  FULL_NAME_EN: 1, // B
+  FULL_NAME_TH: 2, // C
+  POSITION: 3, // D
 
-  MEDICAL_HOSP: 6,
-  MEDICAL_ISSUE: 7,
-  MEDICAL_EXP: 8,
-  MEDICAL_OK: 9,
-  MEDICAL_CONFINED_SPACE: 10,
+  MEDICAL_HOSP: 6, // G
+  MEDICAL_ISSUE: 7, // H
+  MEDICAL_EXP: 8, // I
+  MEDICAL_OK: 10, // K
 
-  COVID_VACCINE: 12, // M
-  PDPA_CONSENT: 13, // N
+  COVID_VACCINE: 11, // L
 
-  TRAINING_START: 14, // O
-  TRAINING_END: 69, // BR
+  PDPA_CONSENT: 23, // X
+
+  TRAINING_START: 24, // Y
 };
 
 const ROW = {
-  TRAINING_HEADER: 2, // row 3
+  TRAINING_NAME: 4, // row 5
+  TRAINING_FIELD: 6, // row 7
 
-  EMPLOYEE_START: 57, // row 58
-  EMPLOYEE_END: 291, // row 292
+  EMPLOYEE_START: 7, // row 8
+  EMPLOYEE_END: 162, // row 163
 };
 
 // ============================================================
 // Constants
 // ============================================================
 
-const SKIP_VALUES = new Set(["N/A", "n/a", null, undefined]);
+const SKIP_VALUES = new Set(["N/A", "n/a", null, undefined, ""]);
 
 const NO_EXPIRY_YEAR = 2099;
 
@@ -70,7 +82,10 @@ const NO_EXPIRY_YEAR = 2099;
 function cleanText(value) {
   if (!value) return null;
 
-  return String(value).replace(/\n/g, " ").replace(/\s+/g, " ").trim();
+  return String(value)
+    .replace(/\r?\n|\r/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 // ============================================================
@@ -99,6 +114,14 @@ function parseDate(val) {
       return null;
     }
 
+    if (/^\d+$/.test(val)) {
+      const excelEpoch = new Date(1899, 11, 30);
+
+      const date = new Date(excelEpoch.getTime() + Number(val) * 86400000);
+
+      return isNaN(date.getTime()) ? null : date;
+    }
+
     const parts = val.split("/");
 
     if (parts.length === 3) {
@@ -115,36 +138,42 @@ function parseDate(val) {
   return null;
 }
 
-function getTrainingStatus(val) {
-  if (!val || SKIP_VALUES.has(val)) {
+function getTrainingStatus(statusValue, expiryDate, completedDate) {
+  if (!statusValue && !expiryDate && !completedDate) {
     return null;
   }
 
-  if (typeof val === "string") {
-    const lower = val.toLowerCase();
+  if (typeof statusValue === "string") {
+    const lower = statusValue.toLowerCase();
 
-    if (lower === "if required") {
+    if (lower.includes("if required")) {
       return "if_required";
     }
 
-    if (val.startsWith("=")) {
-      return null;
+    if (lower.includes("pass")) {
+      return "completed";
+    }
+
+    if (lower.includes("fail")) {
+      return "failed";
     }
   }
 
-  const date = parseDate(val);
-
-  if (!date) {
-    return null;
+  if (completedDate) {
+    return "completed";
   }
 
-  if (date.getFullYear() >= NO_EXPIRY_YEAR) {
+  if (!expiryDate) {
+    return "completed";
+  }
+
+  if (expiryDate.getFullYear() >= NO_EXPIRY_YEAR) {
     return "completed";
   }
 
   const now = new Date();
 
-  if (date < now) {
+  if (expiryDate < now) {
     return "overdue";
   }
 
@@ -152,7 +181,7 @@ function getTrainingStatus(val) {
 
   soon.setDate(soon.getDate() + 90);
 
-  if (date < soon) {
+  if (expiryDate < soon) {
     return "due_soon";
   }
 
@@ -160,7 +189,7 @@ function getTrainingStatus(val) {
 }
 
 function isEmployeeRow(row) {
-  const name = row[COL.FULL_NAME_TH];
+  const name = row[COL.FULL_NAME_EN];
 
   if (!name || typeof name !== "string") {
     return false;
@@ -170,7 +199,7 @@ function isEmployeeRow(row) {
     return false;
   }
 
-  return name.trim().includes(" ");
+  return name.trim().length > 3;
 }
 
 // ============================================================
@@ -178,10 +207,10 @@ function isEmployeeRow(row) {
 // ============================================================
 
 async function importEmployeeTrainings() {
-  console.log("🚀 Importing Employee Trainings...");
+  console.log("🚀 Importing Chevron Employee Trainings...");
 
   // ==========================================================
-  // Read Employee Workbook
+  // Read Workbook
   // ==========================================================
 
   const workbook = xlsx.readFile(FILE_PATH, {
@@ -202,18 +231,6 @@ async function importEmployeeTrainings() {
     raw: false,
     dateNF: "yyyy-mm-dd",
   });
-
-  // ==========================================================
-  // Read Training Mapping Workbook
-  // ==========================================================
-
-  // const mappingWorkbook = xlsx.readFile(TRAINING_MAPPING_FILE);
-
-  // const mappingSheet = mappingWorkbook.Sheets[mappingWorkbook.SheetNames[0]];
-
-  // const TRAINING_NAME_MAP = buildTrainingMap(mappingSheet);
-
-  // console.log(`📚 Training mappings loaded: ${TRAINING_NAME_MAP.size}`);
 
   // ==========================================================
   // Client
@@ -249,22 +266,25 @@ async function importEmployeeTrainings() {
   }
 
   // ==========================================================
-  // Build Training Column Map
+  // Build Training Layout
   // ==========================================================
 
-  const headerRow = rows[ROW.TRAINING_HEADER];
+  const trainingLayout = [];
 
-  const trainingColumnMap = {};
+  const headerRow = rows[ROW.TRAINING_NAME];
 
-  for (let col = COL.TRAINING_START; col <= COL.TRAINING_END; col++) {
-    const excelTrainingName = headerRow[col];
+  const fieldRow = rows[ROW.TRAINING_FIELD];
 
-    if (!excelTrainingName) {
+  for (let col = COL.TRAINING_START; col < headerRow.length; col++) {
+    const trainingNameRaw = headerRow[col];
+
+    const fieldNameRaw = fieldRow[col];
+
+    const cleanedTrainingName = cleanText(trainingNameRaw);
+
+    if (!cleanedTrainingName) {
       continue;
     }
-
-    // const canonicalName = mapTrainingName(excelTrainingName, TRAINING_NAME_MAP);
-    const cleanedTrainingName = cleanText(excelTrainingName);
 
     const clientTraining = await prisma.clientTraining.findFirst({
       where: {
@@ -293,21 +313,48 @@ async function importEmployeeTrainings() {
       continue;
     }
 
-    const globalTraining = clientTraining.globalTraining;
+    const fieldName = cleanText(fieldNameRaw);
 
-    // trainingColumnMap[col] = {
-    //   excelTrainingName,
-    //   canonicalName,
-    // };
+    if (!fieldName) {
+      continue;
+    }
 
-    trainingColumnMap[col] = {
-      excelTrainingName: cleanedTrainingName,
+    let existing = trainingLayout.find(
+      (t) => t.trainingName === cleanedTrainingName,
+    );
 
-      clientTraining,
+    if (!existing) {
+      existing = {
+        trainingName: cleanedTrainingName,
 
-      globalTraining,
-    };
+        clientTraining,
+
+        globalTraining: clientTraining.globalTraining,
+
+        completedCol: null,
+        expiryCol: null,
+        statusCol: null,
+      };
+
+      trainingLayout.push(existing);
+    }
+
+    const lower = fieldName.toLowerCase();
+
+    if (lower.includes("completed")) {
+      existing.completedCol = col;
+    }
+
+    if (lower.includes("expire")) {
+      existing.expiryCol = col;
+    }
+
+    if (lower.includes("status")) {
+      existing.statusCol = col;
+    }
   }
+
+  console.log(`📚 Trainings found: ${trainingLayout.length}`);
 
   // ==========================================================
   // Import Employee Trainings
@@ -327,53 +374,54 @@ async function importEmployeeTrainings() {
     try {
       const row = rows[rowIndex];
 
+      // console.log({
+      //   row: rowIndex + 1,
+      //   B: row[1],
+      //   C: row[2],
+      //   D: row[3],
+      //   E: row[4],
+      //   F: row[5],
+      // });
+
       if (!isEmployeeRow(row)) {
         continue;
       }
 
-      // const fullName = row[COL.FULL_NAME_TH]?.trim();
+      const fullNameTH = cleanText(row[COL.FULL_NAME_TH]);
+
       const fullNameEN = cleanText(row[COL.FULL_NAME_EN]);
 
-      const fullNameTH = cleanText(row[COL.FULL_NAME_TH]);
+      // console.log({
+      //   row: rowIndex + 1,
+      //   fullNameTH,
+      //   fullNameEN,
+      // });
 
       const employee = await prisma.employee.findFirst({
         where: {
           OR: [
-            fullNameTH
-              ? {
-                  fullNameTH,
-                }
-              : undefined,
-
-            fullNameEN
-              ? {
-                  fullNameEN,
-                }
-              : undefined,
-
-            fullNameTH
-              ? {
-                  fullName: fullNameTH,
-                }
-              : undefined,
-
-            fullNameEN
-              ? {
-                  fullName: fullNameEN,
-                }
-              : undefined,
-          ].filter(Boolean),
+            {
+              fullNameTH,
+            },
+            {
+              fullNameEN,
+            },
+            {
+              fullName: fullNameTH,
+            },
+            {
+              fullName: fullNameEN,
+            },
+          ],
         },
       });
 
+      // console.log(employee);
+
       if (!employee) {
         skippedEmployees.push({
-          // fullName,
           fullName: fullNameTH || fullNameEN,
-
           row: rowIndex + 1,
-
-          position: cleanText(row[COL.POSITION]),
         });
 
         skipped++;
@@ -381,7 +429,6 @@ async function importEmployeeTrainings() {
         continue;
       }
 
-      // console.log(`\n👤 ${fullName}`);
       console.log(`\n👤 ${fullNameTH || fullNameEN}`);
 
       // ======================================================
@@ -390,6 +437,8 @@ async function importEmployeeTrainings() {
 
       const covidVac = cleanText(row[COL.COVID_VACCINE]);
 
+      // const pdpaConsent =
+      //   cleanText(row[COL.PDPA_CONSENT])?.toUpperCase() || null;
       const pdpaConsentRaw = cleanText(row[COL.PDPA_CONSENT]);
 
       const pdpaConsent =
@@ -422,30 +471,15 @@ async function importEmployeeTrainings() {
 
         const medicalStatusRaw = cleanText(row[COL.MEDICAL_OK]);
 
-        const confinedSpaceRaw = cleanText(row[COL.MEDICAL_CONFINED_SPACE]);
-
         const medicalRequirement = await prisma.medicalRequirement.findFirst({
           where: {
             clientId: client.id,
+
             name: {
               contains: "Medical Check",
             },
           },
         });
-
-        const confinedSpaceRequirement =
-          await prisma.medicalRequirement.findFirst({
-            where: {
-              clientId: client.id,
-              name: {
-                contains: "Confined Space",
-              },
-            },
-          });
-
-        // ====================================================
-        // Main Medical Checkup
-        // ====================================================
 
         const remindDays = 30;
 
@@ -455,20 +489,8 @@ async function importEmployeeTrainings() {
             )
           : null;
 
-        if (!medicalRequirement) {
-          console.log("⚠ Medical requirement not found");
-
-          // continue;
-        }
-
-        if (!confinedSpaceRequirement) {
-          console.log("⚠ Confined Space requirement not found");
-
-          // continue;
-        }
-
-        // if (medicalIssuedDate) {
-        if (medicalIssuedDate && medicalRequirement) {
+        // if (medicalIssuedDate && medicalRequirement) {
+        if ((medicalIssuedDate || medicalExpiryDate) && medicalRequirement) {
           await prisma.medicalCheck.upsert({
             where: {
               employeeId_checkType_medicalRequirementId: {
@@ -476,7 +498,6 @@ async function importEmployeeTrainings() {
 
                 checkType: "Medical Checkup",
 
-                // medicalRequirementId: medicalRequirement?.id || null,
                 medicalRequirementId: medicalRequirement.id,
               },
             },
@@ -492,7 +513,7 @@ async function importEmployeeTrainings() {
               remindDays,
 
               status:
-                medicalStatusRaw?.toLowerCase() === "yes"
+                medicalStatusRaw?.toLowerCase() === "pass"
                   ? medicalExpiryDate && medicalExpiryDate < new Date()
                     ? "overdue"
                     : "passed"
@@ -502,7 +523,7 @@ async function importEmployeeTrainings() {
             create: {
               employeeId: employee.id,
 
-              medicalRequirementId: medicalRequirement?.id || null,
+              medicalRequirementId: medicalRequirement.id,
 
               checkType: "Medical Checkup",
 
@@ -516,7 +537,7 @@ async function importEmployeeTrainings() {
               remindDays,
 
               status:
-                medicalStatusRaw?.toLowerCase() === "yes"
+                medicalStatusRaw?.toLowerCase() === "pass"
                   ? medicalExpiryDate && medicalExpiryDate < new Date()
                     ? "overdue"
                     : "passed"
@@ -526,128 +547,41 @@ async function importEmployeeTrainings() {
 
           console.log(`   💉 Medical Checkup`);
         }
-
-        // ====================================================
-        // Confined Space
-        // ====================================================
-
-        // if (
-        //   confinedSpaceRaw &&
-        //   confinedSpaceRaw.toLowerCase().includes("yes")
-        // )
-
-        if (
-          confinedSpaceRequirement &&
-          confinedSpaceRaw &&
-          confinedSpaceRaw.toLowerCase().includes("yes")
-        ) {
-          await prisma.medicalCheck.upsert({
-            where: {
-              employeeId_checkType_medicalRequirementId: {
-                employeeId: employee.id,
-
-                checkType: "Confined Space Entry",
-
-                // medicalRequirementId: confinedSpaceRequirement?.id || null,
-                medicalRequirementId: confinedSpaceRequirement.id,
-              },
-            },
-
-            update: {
-              issuedDate: medicalIssuedDate,
-
-              expiryDate: medicalExpiryDate,
-
-              remindDate,
-              remindDays,
-
-              status:
-                medicalExpiryDate && medicalExpiryDate < new Date()
-                  ? "overdue"
-                  : "passed",
-            },
-
-            create: {
-              employeeId: employee.id,
-
-              medicalRequirementId: confinedSpaceRequirement?.id || null,
-
-              checkType: "Confined Space Entry",
-
-              issuedDate: medicalIssuedDate,
-
-              expiryDate: medicalExpiryDate,
-
-              remindDate,
-              remindDays,
-
-              status:
-                medicalExpiryDate && medicalExpiryDate < new Date()
-                  ? "overdue"
-                  : "passed",
-            },
-          });
-
-          console.log(`   💉 Confined Space`);
-        }
       } catch (err) {
         console.log(`❌ Medical Error: ${err.message}`);
       }
 
       // ======================================================
-      // Loop Training Columns
+      // Trainings
       // ======================================================
 
-      for (const [colIndex, trainingInfo] of Object.entries(
-        trainingColumnMap,
-      )) {
+      for (const training of trainingLayout) {
         try {
-          const cellValue = row[parseInt(colIndex)];
+          const globalTraining = training.globalTraining;
 
-          if (cellValue === null || cellValue === undefined) {
+          const clientTraining = training.clientTraining;
+
+          const completedDate = parseDate(row[training.completedCol]);
+
+          const expiryDate = parseDate(row[training.expiryCol]);
+
+          const rawStatus = cleanText(row[training.statusCol]);
+
+          const status = getTrainingStatus(
+            rawStatus,
+            expiryDate,
+            completedDate,
+          );
+
+          if (!status && !completedDate && !expiryDate) {
             continue;
           }
 
-          const status = getTrainingStatus(cellValue);
+          const remindDays = 30;
 
-          const clientTraining = trainingInfo.clientTraining;
-
-          const globalTraining = trainingInfo.globalTraining;
-
-          if (!status) {
-            continue;
-          }
-
-          // const canonicalName = trainingInfo.canonicalName;
-
-          // if (!canonicalName) {
-          //   console.log(`⚠ No mapping: "${trainingInfo.excelTrainingName}"`);
-
-          //   continue;
-          // }
-
-          // const globalTraining = globalTrainingMap[canonicalName];
-
-          // if (!globalTraining) {
-          //   console.log(`⚠ Global training not found: ${canonicalName}`);
-
-          //   continue;
-          // }
-
-          // const clientTraining = clientTrainingMap[canonicalName];
-
-          const expiryDate =
-            status === "if_required"
-              ? null
-              : (() => {
-                  const parsed = parseDate(cellValue);
-
-                  if (parsed && parsed.getFullYear() >= NO_EXPIRY_YEAR) {
-                    return null;
-                  }
-
-                  return parsed;
-                })();
+          const remindDate = expiryDate
+            ? new Date(expiryDate.getTime() - remindDays * 24 * 60 * 60 * 1000)
+            : null;
 
           // ==================================================
           // Existing Latest
@@ -680,8 +614,7 @@ async function importEmployeeTrainings() {
               data: {
                 employeeId: employee.id,
 
-                // rawTrainingName: cleanedTrainingName,
-                rawTrainingName: trainingInfo.excelTrainingName,
+                rawTrainingName: training.trainingName,
 
                 globalTrainingId: globalTraining.id,
 
@@ -689,7 +622,11 @@ async function importEmployeeTrainings() {
 
                 contractId: contract.id,
 
+                completedDate,
                 expiryDate,
+
+                remindDate,
+                remindDays,
 
                 status,
 
@@ -699,7 +636,6 @@ async function importEmployeeTrainings() {
 
                 isLatest: true,
 
-                // version: 1,
                 version: (existing.version || 1) + 1,
               },
             });
@@ -708,15 +644,19 @@ async function importEmployeeTrainings() {
               data: {
                 employeeId: employee.id,
 
-                rawTrainingName: trainingInfo.excelTrainingName,
+                rawTrainingName: training.trainingName,
 
                 globalTrainingId: globalTraining.id,
 
-                clientTrainingId: clientTraining?.id || null,
+                clientTrainingId: clientTraining.id,
 
                 contractId: contract.id,
 
+                completedDate,
                 expiryDate,
+
+                remindDate,
+                remindDays,
 
                 status,
 
@@ -735,7 +675,7 @@ async function importEmployeeTrainings() {
 
           console.log(`   ✔ ${globalTraining.name} (${status})`);
         } catch (err) {
-          console.error(`❌ Training error: ${err.message}`);
+          console.error(`❌ ${training.trainingName}: ${err.message}`);
         }
       }
     } catch (err) {
@@ -753,7 +693,7 @@ async function importEmployeeTrainings() {
     console.log("\n⚠ Skipped Employees:");
 
     for (const item of skippedEmployees) {
-      console.log(`- ${item.fullName} | ${item.position} | row ${item.row}`);
+      console.log(`- ${item.fullName} (row ${item.row})`);
     }
   }
 
