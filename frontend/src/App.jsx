@@ -1,9 +1,16 @@
-import React, { useContext, useEffect } from "react";
+import { useContext, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
+
 import { AppContent } from "./context/AppContext";
-import { sharedRoutes } from "./routes/shared/SharedRoutes";
-import CompanyRouter from "./routes/company/CompanyRouter";
+
+import Login from "./pages/auth/Login";
+import Profile from "./pages/auth/Profile";
+import ResetPassword from "./pages/auth/ResetPassword";
+
+import ProtectedRoute from "./components/ProtectedRoute";
+
+import AppRouter from "./routes/AppRouter";
 
 const App = () => {
   const { isLoggedin, loading, userData } = useContext(AppContent);
@@ -15,54 +22,48 @@ const App = () => {
     console.log("loading:", loading);
   }, [userData, isLoggedin, loading]);
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   return (
-    <div>
+    <>
       <ToastContainer />
 
       <Routes>
-        {/* root */}
-        {/* <Route
-          path="/"
-          element={
-            isLoggedin ? (
-              !userData ? (
-                <div>Loading...</div>
-              ) : userData.role?.name === "admin" ? (
-                <Navigate to="/admin" />
-              ) : (
-                <Navigate to="/profile" />
-              )
-            ) : (
-              <Navigate to="/company-select" />
-            )
-          }
-        /> */}
+        {/* Root */}
         <Route
           path="/"
           element={
             isLoggedin ? (
-              !userData ? (
-                <div>Loading...</div>
-              ) : (
-                <Navigate to="/admin" /> // ทุก role ไป admin
-              )
+              <Navigate to="/admin" replace />
             ) : (
-              <Navigate to="/company-select" />
+              <Navigate to="/login" replace />
             )
           }
         />
 
-        {/* shared */}
-        {sharedRoutes()}
+        {/* Public */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
-        <Route path="/admin/*" element={<CompanyRouter />} />
+        {/* Protected */}
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
 
-        {/* fallback */}
-        <Route path="*" element={<Navigate to="/" />} />
+        {/* Main App */}
+        <Route path="/admin/*" element={<AppRouter />} />
+
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </div>
+    </>
   );
 };
 

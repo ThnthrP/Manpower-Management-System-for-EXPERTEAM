@@ -70,6 +70,7 @@ async function seedClientTrainings() {
 
   let inserted = 0;
   let skipped = 0;
+  let emptyRows = 0;
 
   // ======================================================
   // Loop
@@ -93,8 +94,15 @@ async function seedClientTrainings() {
       // Empty Row
       // ==================================================
 
+      // if (!globalName || !clientName) {
+      //   console.log(`⚠ Empty row ${rowIndex + 2}:`, globalName, clientName);
+
+      //   skipped++;
+      //   continue;
+      // }
+
       if (!globalName || !clientName) {
-        skipped++;
+        emptyRows++;
 
         continue;
       }
@@ -110,10 +118,11 @@ async function seedClientTrainings() {
       });
 
       if (!globalTraining) {
-        console.log(`⚠ Global training not found: ${globalName}`);
+        // console.log(
+        //   `⚠ Global training not found row ${rowIndex + 2}: ${globalName}`,
+        // );
 
         skipped++;
-
         continue;
       }
 
@@ -128,10 +137,11 @@ async function seedClientTrainings() {
       });
 
       if (!trainingStandard) {
-        console.log(`⚠ Training standard not found: ${globalName}`);
+        // console.log(
+        //   `⚠ Training standard not found row ${rowIndex + 2}: ${globalName}`,
+        // );
 
         skipped++;
-
         continue;
       }
 
@@ -179,11 +189,9 @@ async function seedClientTrainings() {
   // ======================================================
 
   console.log("\n================================");
-
   console.log("✅ PTT Client Training Seed Completed");
-
   console.log(`✔ Inserted: ${inserted}`);
-
+  console.log(`📄 Empty Rows: ${emptyRows}`);
   console.log(`⚠ Skipped: ${skipped}`);
 }
 

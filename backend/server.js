@@ -9,14 +9,18 @@ import safetyRouter from "./routes/safetyRoutes.js";
 import medicalRouter from "./routes/medicalRoutes.js";
 import requestRouter from "./routes/requestRoutes.js";
 
+import trainingMatrixRoutes from "./routes/trainingMatrix.routes.js";
+
 // import bookingRouter from "./routes/bookingRoutes.js";
 // import vehicleRouter from "./routes/vehicleRoutes.js";
 // import costRouter from "./routes/costRoutes.js";
 
 const app = express();
 const port = process.env.PORT || 4000;
-const allowedOrigins = [process.env.CLIENT_URL?.trim(), "http://localhost:5173"]
-  .filter(Boolean);
+const allowedOrigins = [
+  process.env.CLIENT_URL?.trim(),
+  "http://localhost:5173",
+].filter(Boolean);
 
 const corsOptions = {
   origin(origin, callback) {
@@ -48,6 +52,8 @@ app.use("/uploads", express.static("uploads"));
 // app.use("/api/bookings", bookingRouter);
 
 // app.use("/api/costs", costRouter);
+
+app.use("/api/training-matrix", trainingMatrixRoutes);
 
 // start server
 app.listen(port, () => {

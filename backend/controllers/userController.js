@@ -1,11 +1,18 @@
 import prisma from "../config/prisma.js";
 
+// =====================================================
+// GET CURRENT USER
+// =====================================================
+
 export const getUserData = async (req, res) => {
   try {
     const userId = req.user.id;
 
     const user = await prisma.user.findUnique({
-      where: { id: userId },
+      where: {
+        id: userId,
+      },
+
       include: {
         role: {
           include: {
@@ -16,7 +23,8 @@ export const getUserData = async (req, res) => {
             },
           },
         },
-        company: true,
+
+        employee: true,
       },
     });
 
@@ -29,22 +37,19 @@ export const getUserData = async (req, res) => {
 
     return res.json({
       success: true,
+
       userData: {
+        id: user.id,
+
         name: user.name,
         email: user.email,
-        phone: user.phone,
-        department: user.department,
-
-        // role: user.role?.name || null,
 
         role: {
           id: user.role?.id,
           name: user.role?.name,
         },
 
-        company: {
-          name: user.company?.name || null,
-        },
+        employee: user.employee,
 
         permissions:
           user.role?.permissions?.map(
@@ -60,29 +65,41 @@ export const getUserData = async (req, res) => {
   }
 };
 
+// =====================================================
+// UPDATE PROFILE
+// =====================================================
+
 export const updateProfile = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const { name, phone, department } = req.body;
+    const { name } = req.body;
 
     const updatedUser = await prisma.user.update({
-      where: { id: userId },
+      where: {
+        id: userId,
+      },
+
       data: {
         name,
-        phone,
-        department,
       },
     });
 
-    res.json({
+    return res.json({
       success: true,
       user: updatedUser,
     });
   } catch (error) {
-    res.json({ success: false, message: error.message });
+    return res.json({
+      success: false,
+      message: error.message,
+    });
   }
 };
+
+// =====================================================
+// UPDATE USER ROLE
+// =====================================================
 
 export const updateUserRole = async (req, res) => {
   try {
@@ -96,92 +113,76 @@ export const updateUserRole = async (req, res) => {
     }
 
     const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: { roleId },
+      where: {
+        id: userId,
+      },
+
+      data: {
+        roleId,
+      },
     });
 
-    res.json({
+    return res.json({
       success: true,
       user: updatedUser,
     });
   } catch (error) {
-    res.json({ success: false, message: error.message });
+    return res.json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
+// =====================================================
+// GET ALL ROLES
+// =====================================================
+
 export const getAllRoles = async (req, res) => {
   try {
-    const roles = await prisma.role.findMany();
+    const roles = await prisma.role.findMany({
+      orderBy: {
+        name: "asc",
+      },
+    });
 
-    res.json({
+    return res.json({
       success: true,
       roles,
     });
   } catch (error) {
-    res.json({ success: false, message: error.message });
+    return res.json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
+// =====================================================
+// GET ALL USERS
+// =====================================================
+
 export const getAllUsers = async (req, res) => {
   try {
-    const currentUser = await prisma.user.findUnique({
-      where: { id: req.user.id },
-      include: { company: true },
-    });
-
-    if (!currentUser?.companyId) {
-      return res.json({
-        success: false,
-        message: "No company assigned",
-      });
-    }
-
     const users = await prisma.user.findMany({
-      where: {
-        companyId: currentUser.companyId,
-      },
       include: {
         role: true,
-        company: true,
+        employee: true,
+      },
+
+      orderBy: {
+        name: "asc",
       },
     });
 
-    res.json({
+    return res.json({
       success: true,
       users,
     });
   } catch (error) {
-    res.json({ success: false, message: error.message });
-  }
-};
-
-export const getAllCompanies = async (req, res) => {
-  try {
-    const companies = await prisma.company.findMany();
-
-    res.json({
-      success: true,
-      companies,
+    return res.json({
+      success: false,
+      message: error.message,
     });
-  } catch (error) {
-    res.json({ success: false, message: error.message });
-  }
-};
-
-export const updateUserCompany = async (req, res) => {
-  try {
-    const { userId, companyId } = req.body;
-
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: { companyId },
-    });
-
-    res.json({
-      success: true,
-      user: updatedUser,
-    });
-  } catch (error) {
-    res.json({ success: false, message: error.message });
   }
 };

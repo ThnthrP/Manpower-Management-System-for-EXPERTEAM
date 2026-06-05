@@ -1,57 +1,54 @@
 import React, { useContext } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+
 import { AppContent } from "../../context/AppContext";
-import { CES_MENU, EXPERT_MENU } from "./sidebarMenu";
+import { APP_MENU } from "./sidebarMenu";
 
 const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
+
   const { userData } = useContext(AppContent);
 
   const role = userData?.role?.name;
-  const company = userData?.company?.name;
 
-  const isActive = (path) => location.pathname.startsWith(path);
+  const isActive = (path) => {
+    // Dashboard
+    if (path === "/admin") {
+      return location.pathname === "/admin";
+    }
+
+    // route อื่น ๆ
+    return location.pathname === path;
+  };
 
   const allow = (roles) => {
     if (!roles) return true;
+
     return roles.includes(role);
   };
 
-  // FIX company mapping
-  let menu = [];
-
-  if (company === "CES") {
-    menu = CES_MENU;
-  } else if (company === "EXPERTEAM") {
-    menu = EXPERT_MENU;
-  }
-
-  // DEBUG
-  console.log("Sidebar Debug:", { role, company, menu });
-
   return (
-    <div className="w-64 h-screen bg-slate-900 text-white p-4 overflow-y-auto">
+    // <div className="w-64 h-screen bg-slate-900 text-white p-4 overflow-y-auto">
+    // <div className="w-64 bg-slate-900 text-white p-4">
+
+    <div className="w-64 h-screen bg-slate-900 text-white p-4 sticky top-0 overflow-y-auto">
       {/* HEADER */}
       <div className="mb-6">
         <h2 className="text-lg font-bold">MMS Panel</h2>
 
-        <div className="text-xs mt-1 font-semibold">
-          {company === "CES" && (
-            <span className="text-blue-400">🏗️ CES (Construction)</span>
-          )}
-          {company === "EXPERTEAM" && (
-            <span className="text-purple-400">🔧 EXPERTEAM (Maintenance)</span>
-          )}
-          {!company && <span className="text-red-400">No Company</span>}
+        <div className="text-xs mt-1 text-purple-400 font-semibold">
+          🔧 Experteam
         </div>
       </div>
 
       {/* MENU */}
-      {menu.map((group, idx) => {
+      {APP_MENU.map((group, idx) => {
         const filteredItems = group.items.filter((item) => allow(item.roles));
 
-        if (filteredItems.length === 0) return null;
+        if (filteredItems.length === 0) {
+          return null;
+        }
 
         return (
           <div key={idx} className="mb-6">
