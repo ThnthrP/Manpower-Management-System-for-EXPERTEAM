@@ -43,18 +43,18 @@ MMS is a multi-company workforce management system designed for offshore and ind
 
 ## Roles
 
-| Role | Description |
-|------|-------------|
-| `admin` | Full system access |
-| `pe` | Project Engineer — creates manpower requests |
-| `pe_head` | PE approval override |
-| `manpower` | Candidate management |
-| `hr` | Employee management |
-| `safety` | Safety compliance |
-| `nurse` | Medical records |
-| `ta` | Release approval |
-| `expert` | Training & matching review |
-| `bd` | Business / customer handling |
+| Role | Full Name | Description |
+|------|-----------|-------------|
+| `admin` | Administrator | Full system access |
+| `pe` | Project Engineer | Creates manpower requests |
+| `pe_head` | Project Engineer Head | PE approval override |
+| `manpower` | Manpower Coordinator | Candidate and manpower management |
+| `hr` | Human Resources | Employee management |
+| `safety` | Safety Officer | Safety compliance and certification review |
+| `nurse` | Occupational Health Nurse | Medical records and fitness checks |
+| `ta` | Technical Authority | Release and technical approval |
+| `expert` | Subject Matter Expert | Training and qualification review |
+| `bd` | Business Development | Customer and business relationship management |
 
 ---
 
