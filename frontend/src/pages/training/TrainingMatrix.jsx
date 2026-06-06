@@ -222,6 +222,15 @@ export default function TrainingMatrix() {
           <div className="card bg-light border-0 mb-4 rounded-3 shadow-sm">
             <div className="card-body py-3 px-4">
               <div className="d-flex flex-wrap align-items-center gap-3">
+                {/* <div className="alert alert-light border py-2 mb-4">
+  <small>
+    <strong>Requirement Definitions:</strong>{" "}
+    Mandatory = Required for all personnel |
+    Required = Minimum requirement by client matrix |
+    Assigned = Required as assigned by company |
+    Relevant = Applicable to related personnel
+  </small>
+</div> */}
                 <span
                   className="fw-bold text-dark me-2"
                   style={{ fontSize: "0.9rem" }}
@@ -234,23 +243,26 @@ export default function TrainingMatrix() {
                 >
                   <span className="d-inline-flex align-items-center gap-1 text-dark fw-medium">
                     <span className="badge bg-danger px-2 py-1 text-dark">
-                      Mandatory
+                      Mandatory = Required for all personnel
                     </span>{" "}
-                    จำเป็นสำหรับพนักงานทุกคน
+                    |
                   </span>{" "}
-                  |
                   <span className="d-inline-flex align-items-center gap-1 text-dark fw-medium">
                     <span className="badge bg-primary px-2 py-1 text-dark">
-                      Assigned
+                      Required = Minimum requirement by client matrix
                     </span>{" "}
-                    มอบหมายโดยบริษัท
+                    |
                   </span>{" "}
-                  |
                   <span className="d-inline-flex align-items-center gap-1 text-dark fw-medium">
                     <span className="badge bg-warning px-2 py-1 text-dark">
-                      Relevant
+                      Assigned = Required as assigned by company
                     </span>{" "}
-                    เกี่ยวข้องตามสายงาน
+                    |
+                  </span>{" "}
+                  <span className="d-inline-flex align-items-center gap-1 text-dark fw-medium">
+                    <span className="badge bg-warning px-2 py-1 text-dark">
+                      Relevant = Applicable to related personnel
+                    </span>{" "}
                   </span>
                 </div>
               </div>
@@ -266,7 +278,7 @@ export default function TrainingMatrix() {
             </div>
           ) : filteredGroups.length === 0 ? (
             <div className="text-center py-5 text-muted">
-              Please select a Contract and Position to view the data.
+              Please select a Client and Position to view the data.
             </div>
           ) : (
             <div className="w-full">
