@@ -281,7 +281,7 @@ export default function TrainingMatrix() {
                   <div className="card-header bg-light d-flex justify-content-between align-items-center">
                     <span className="fw-bold text-dark">
                       {group.positionName} :
-                    </span> {" "}
+                    </span>{" "}
                     <span className="badge bg-dark rounded-pill">
                       {group.requirements.length} Courses
                     </span>
