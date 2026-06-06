@@ -222,15 +222,6 @@ export default function TrainingMatrix() {
           <div className="card bg-light border-0 mb-4 rounded-3 shadow-sm">
             <div className="card-body py-3 px-4">
               <div className="d-flex flex-wrap align-items-center gap-3">
-                {/* <div className="alert alert-light border py-2 mb-4">
-  <small>
-    <strong>Requirement Definitions:</strong>{" "}
-    Mandatory = Required for all personnel |
-    Required = Minimum requirement by client matrix |
-    Assigned = Required as assigned by company |
-    Relevant = Applicable to related personnel
-  </small>
-</div> */}
                 <span
                   className="fw-bold text-dark me-2"
                   style={{ fontSize: "0.9rem" }}
@@ -289,8 +280,8 @@ export default function TrainingMatrix() {
                 >
                   <div className="card-header bg-light d-flex justify-content-between align-items-center">
                     <span className="fw-bold text-dark">
-                      {group.positionName}
-                    </span>
+                      {group.positionName} :
+                    </span> {" "}
                     <span className="badge bg-dark rounded-pill">
                       {group.requirements.length} Courses
                     </span>
