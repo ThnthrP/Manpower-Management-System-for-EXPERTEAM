@@ -21,3 +21,17 @@ export async function getRequirements(req, res) {
 
   res.json(data);
 }
+
+export async function getGlobalTrainings(req, res) {
+  try {
+    const data = await service.getGlobalTrainings();
+
+    res.json(data);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: "Failed to load global trainings",
+    });
+  }
+}

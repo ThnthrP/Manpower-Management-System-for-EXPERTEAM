@@ -35,7 +35,7 @@ export const APP_MENU = [
       {
         name: "Workers",
         path: "/admin/workers",
-        roles: ["admin", "hr", "manpower", "safety", "nurse", "ta"],
+        roles: ["admin", "hr", "manpower", "safety", "pe", "expert"],
       },
       {
         name: "Add Worker",
@@ -57,9 +57,9 @@ export const APP_MENU = [
         roles: ["admin", "hr", "manpower", "pe", "expert"], // PE และ Expert เข้ามาดูเป็น Knowledge Base ได้เลยจากตรงนี้
       },
       {
-        name: "Certifications",
-        path: "/admin/certifications",
-        roles: ["admin", "hr", "manpower", "safety", "nurse"],
+        name: "Compliance Center",
+        path: "/admin/compliance",
+        roles: ["admin", "hr", "manpower", "safety", "nurse", "pe"],
         badge: true, // ตัวเลขแจ้งเตือน Expired/Missing ดึงสเตตัสรวมในหน้านี้หน้าเดียว
       },
     ],

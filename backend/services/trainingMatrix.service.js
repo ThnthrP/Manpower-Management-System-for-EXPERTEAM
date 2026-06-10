@@ -100,3 +100,21 @@ export async function getRequirements(contractId, positionId) {
 
   return Object.values(groups);
 }
+
+  // ===================================
+  // Global Training
+  // ===================================
+
+export async function getGlobalTrainings() {
+  return prisma.globalTraining.findMany({
+    orderBy: {
+      name: "asc",
+    },
+
+    select: {
+      id: true,
+      name: true,
+      fullName: true,
+    },
+  });
+}

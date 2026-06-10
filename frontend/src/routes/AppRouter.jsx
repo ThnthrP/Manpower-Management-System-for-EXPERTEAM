@@ -12,6 +12,9 @@ import PeDashboard from "../pages/dashboard/PeDashboard";
 import AdminUsers from "../pages/admin/AdminUsers";
 
 import TrainingMatrix from "../pages/training/TrainingMatrix";
+import Workers from "../pages/workers/Workers";
+import AddWorker from "../pages/workers/AddWorker";
+import ComplianceDashboard from "../pages/compliance/ComplianceDashboard";
 
 const AppRouter = () => {
   const { userData } = useContext(AppContent);
@@ -50,6 +53,51 @@ const AppRouter = () => {
                 allowRoles={["admin", "hr", "manpower", "pe", "expert"]}
               >
                 <TrainingMatrix />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/workers"
+            element={
+              <ProtectedRoute
+                allowRoles={[
+                  "admin",
+                  "hr",
+                  "manpower",
+                  "safety",
+                  "pe",
+                  "expert",
+                ]}
+              >
+                <Workers />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/workers/add"
+            element={
+              <ProtectedRoute allowRoles={["admin", "hr"]}>
+                <AddWorker />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/compliance"
+            element={
+              <ProtectedRoute
+                allowRoles={[
+                  "admin",
+                  "hr",
+                  "manpower",
+                  "safety",
+                  "nurse",
+                  "pe",
+                ]}
+              >
+                <ComplianceDashboard />
               </ProtectedRoute>
             }
           />

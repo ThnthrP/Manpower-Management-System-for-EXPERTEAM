@@ -79,10 +79,7 @@ enum CheckStatus {
 
 enum AvailabilityStatus {
   available
-  assigned
-  leave
-  training
-  medical_hold
+  unavailable
 }
 
 enum TrainingStatus {
@@ -190,6 +187,15 @@ enum ApprovalStatus {
   approved
   rejected
 }
+
+enum WorkerMobilizationStatus {
+  pending
+  ready
+  on_site
+} 
+//Pending = ยังขาดเอกสาร / training / medical
+//Ready = พร้อมส่งขึ้นงานแล้ว
+//On-Site = อยู่หน้างานแล้ว
 
 // ─────────────────────────────────────────────────────────
 // USER & RBAC
@@ -320,19 +326,30 @@ model Position {
 model Employee {
   id         String  @id @default(uuid())
   empCode    String  @unique
+
   fullName   String
   fullNameTH String?
   fullNameEN String?
+
+  // Contact Information
+  nationality String?
+  phone       String?
+  email       String?
+
+  // Optional
+  notes       String? @db.Text
 
   startWorkDate DateTime?
 
   status             EmployeeStatus     @default(active)
   availabilityStatus AvailabilityStatus @default(available)
-  division           String? // "Scaffold&Paint", "Mechanical"
-  isOffshore         Boolean            @default(false)
+  mobilizationStatus WorkerMobilizationStatus @default(pending)
+
+  division    String?
+  isOffshore  Boolean @default(false)
 
   positionId String?
-  position   Position? @relation("PrimaryPosition", fields: [positionId], references: [id])
+  position Position? @relation("PrimaryPosition", fields: [positionId], references: [id])
 
   user User?
 
@@ -549,6 +566,7 @@ model MedicalCheck {
   remindDate DateTime?
   remindDays Int?
   status     CheckStatus @default(pending)
+  notes      String?     @db.Text
 
   employee           Employee            @relation(fields: [employeeId], references: [id])
   medicalRequirement MedicalRequirement? @relation(fields: [medicalRequirementId], references: [id])
@@ -784,12 +802,16 @@ model Assignment {
 
 model Passport {
   id         String @id @default(uuid())
-  employeeId String @unique // 1 employee = 1 passport ปัจจุบัน
+  employeeId String @unique
 
+  // Passport
   passportNo String?
-
   issueDate  DateTime?
   expiryDate DateTime?
+
+  // Work Permit
+  workPermitNo         String?
+  workPermitExpiryDate DateTime?
 
   // status คำนวณ runtime จาก expiryDate ไม่ต้อง store
   // แต่ถ้าอยากเก็บ snapshot ใช้ CheckStatus ได้

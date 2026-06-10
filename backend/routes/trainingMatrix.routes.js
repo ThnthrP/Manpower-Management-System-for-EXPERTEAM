@@ -1,4 +1,5 @@
 import express from "express";
+import { getGlobalTrainings } from "../controllers/trainingMatrix.controller.js";
 
 import {
   getContracts,
@@ -13,5 +14,7 @@ router.get("/contracts", getContracts);
 router.get("/positions/:contractId", getPositions);
 
 router.get("/requirements", getRequirements);
+
+router.get("/global", getGlobalTrainings);
 
 export default router;
