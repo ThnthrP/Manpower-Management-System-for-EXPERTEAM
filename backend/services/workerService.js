@@ -24,9 +24,7 @@ export async function createWorker(data) {
 
       division: data.division || null,
 
-      startWorkDate: data.startWorkDate
-        ? new Date(data.startWorkDate)
-        : null,
+      startWorkDate: data.startWorkDate ? new Date(data.startWorkDate) : null,
 
       status: data.status,
 
@@ -46,9 +44,41 @@ export async function createPassport(employeeId, data) {
 
       passportNo: data.passportNo || null,
 
-      expiryDate: data.expiryDate
-        ? new Date(data.expiryDate)
-        : null,
+      expiryDate: data.expiryDate ? new Date(data.expiryDate) : null,
+    },
+  });
+}
+
+export async function getWorkerById(id) {
+  return prisma.employee.findUnique({
+    where: {
+      id,
+    },
+    include: {
+      position: true,
+      passports: true,
+      medicalRecords: true,
+      trainingRecords: true,
+    },
+  });
+}
+
+export async function updateWorker(id, data) {
+  return prisma.employee.update({
+    where: {
+      id,
+    },
+    data,
+  });
+}
+
+export async function deleteWorker(id) {
+  return prisma.employee.update({
+    where: {
+      id: String(id),
+    },
+    data: {
+      status: "inactive",
     },
   });
 }

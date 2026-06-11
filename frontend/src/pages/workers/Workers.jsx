@@ -1,5 +1,6 @@
 import { useState, useEffect, useContext } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import { AppContent } from "../../context/AppContext";
 import Select from "react-select"; // 💡 นำเข้า react-select เพื่อทำกล่องเลือกที่พิมพ์ค้นหาได้
 
@@ -14,6 +15,8 @@ export default function Workers() {
   const [workers, setWorkers] = useState([]);
   const [loading, setLoading] = useState(false);
   const { backendUrl } = useContext(AppContent);
+
+  const navigate = useNavigate();
 
   // ==========================
   // ของเดิมคงไว้: ดึงข้อมูลและจัดการ Options
@@ -164,8 +167,28 @@ export default function Workers() {
     }
   };
 
+  const handleDelete = async (id) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to deactivate this worker?",
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await axios.delete(`${backendUrl}/api/workers/${id}`, {
+        withCredentials: true,
+      });
+
+      fetchWorkers();
+    } catch (error) {
+      console.error(error);
+
+      alert(error.response?.data?.message || "Failed to deactivate worker");
+    }
+  };
+
   return (
-    <div className="container-fluid p-4">
+    <div className="container-fluid p-0">
       <h3 className="mb-4 fw-bold text-dark">Workers</h3>
 
       <div className="card shadow-sm mb-4 border-0">
@@ -352,20 +375,22 @@ export default function Workers() {
             >
               <thead className="table-light">
                 <tr>
-                  <th className="ps-4 text-dark fw-bold py-2">Employee Code</th>
-                  <th className="text-dark fw-bold py-2">Name</th>
-                  <th className="text-dark fw-bold py-2">Position</th>
-                  <th className="text-dark fw-bold py-2">Department</th>
-                  <th className="text-dark fw-bold text-center py-2">
+                  <th className="ps-4 text-dark fw-bold py-2 pe-3">Emp Code</th>
+                  <th className="text-dark fw-bold py-2 pe-3">Name</th>
+                  <th className="text-dark fw-bold py-2 pe-3">Position</th>
+                  <th className="text-dark fw-bold py-2 pe-3">Department</th>
+                  <th className="text-dark fw-bold text-center py-2 pe-3">
                     Availability
                   </th>
-                  <th className="text-dark fw-bold text-center py-2">Status</th>
-                  <th className="text-dark fw-bold text-center py-2">
+                  <th className="text-dark fw-bold text-center py-2 pe-3">
+                    Status
+                  </th>
+                  <th className="text-dark fw-bold text-center py-2 pe-3">
                     Mobilization
                   </th>
                   <th
-                    width="160"
-                    className="text-dark fw-bold text-center pe-4 py-2"
+                    width="220"
+                    className="text-dark fw-bold text-center pe-4 py-2 pe-4"
                   >
                     Actions
                   </th>
@@ -393,17 +418,17 @@ export default function Workers() {
                 ) : (
                   filteredWorkers.map((worker) => (
                     <tr key={worker.id}>
-                      <td className="ps-4 fw-medium text-dark py-2">
+                      <td className="ps-4 fw-medium text-dark py-2 pe-3">
                         {worker.empCode}
                       </td>
-                      <td className="text-dark py-2">{worker.fullName}</td>
-                      <td className="text-dark py-2">
+                      <td className="text-dark py-2 pe-3">{worker.fullName}</td>
+                      <td className="text-dark py-2 pe-3">
                         {worker.position?.name || "-"}
                       </td>
-                      <td className="text-dark py-2">
+                      <td className="text-dark py-2 pe-3">
                         {worker.division || "-"}
                       </td>
-                      <td className="text-center py-2">
+                      <td className="text-center py-2 pe-3">
                         {/* 💡 ลด padding ของ badge ลงเป็น px-2 py-1 เพื่อให้พอดีกับตารางตัวเล็ก */}
                         <span
                           className={`badge ${getAvailabilityBadge(worker.availabilityStatus)} px-2 py-1`}
@@ -412,7 +437,7 @@ export default function Workers() {
                           {worker.availabilityStatus}
                         </span>
                       </td>
-                      <td className="text-center py-2">
+                      <td className="text-center py-2 pe-3">
                         {/* 💡 ลด padding ของ badge ลงเป็น px-2 py-1 */}
                         <span
                           className={`badge ${getStatusBadge(worker.status)} px-2 py-1`}
@@ -421,7 +446,7 @@ export default function Workers() {
                           {worker.status}
                         </span>
                       </td>
-                      <td className="text-center py-2">
+                      <td className="text-center py-2 pe-3">
                         <span
                           className={`badge ${getMobilizationBadge(worker.mobilizationStatus)} px-2 py-1`}
                           style={{ fontSize: "11px" }}
@@ -429,20 +454,37 @@ export default function Workers() {
                           {worker.mobilizationStatus || "pending"}
                         </span>
                       </td>
-                      <td className="text-center pe-4 py-2">
-                        {/* 💡 เติมสไตล์ลดขนาดปุ่ม Actions ให้กะทัดรัดขึ้น */}
-                        <button
-                          className="btn btn-sm btn-outline-primary px-2 py-0.5"
-                          style={{ fontSize: "12px" }}
-                        >
-                          View
-                        </button>
-                        <button
-                          className="btn btn-sm btn-outline-secondary ms-1 px-2 py-0.5"
-                          style={{ fontSize: "12px" }}
-                        >
-                          Edit
-                        </button>
+                      <td className="text-center pe-3 py-2">
+                        <div className="d-flex justify-content-center gap-1">
+                          <button
+                            className="btn btn-sm btn-outline-primary px-2 py-1"
+                            style={{ fontSize: "12px" }}
+                            onClick={() =>
+                              navigate(`/admin/workers/${worker.id}`)
+                            }
+                          >
+                            <i className="bi bi-eye me-1"></i>View
+                          </button>
+
+                          <button
+                            className="btn btn-sm btn-outline-secondary px-2 py-1"
+                            style={{ fontSize: "12px" }}
+                            onClick={() =>
+                              navigate(`/admin/workers/${worker.id}/edit`)
+                            }
+                          >
+                            <i className="bi bi-pencil me-1"></i>Edit
+                          </button>
+
+                          <button
+                            className="btn btn-sm btn-outline-danger px-2 py-1"
+                            style={{ fontSize: "12px" }}
+                            onClick={() => handleDelete(worker.id)}
+                          >
+                            <i className="bi bi-slash-circle me-1"></i>
+                            Deactivate
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))

@@ -16,6 +16,9 @@ import Workers from "../pages/workers/Workers";
 import AddWorker from "../pages/workers/AddWorker";
 import ComplianceDashboard from "../pages/compliance/ComplianceDashboard";
 
+import WorkerDetail from "../pages/workers/WorkerDetail";
+import EditWorker from "../pages/workers/EditWorker";
+
 const AppRouter = () => {
   const { userData } = useContext(AppContent);
 
@@ -80,6 +83,33 @@ const AppRouter = () => {
             element={
               <ProtectedRoute allowRoles={["admin", "hr"]}>
                 <AddWorker />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/workers/:id"
+            element={
+              <ProtectedRoute
+                allowRoles={[
+                  "admin",
+                  "hr",
+                  "manpower",
+                  "safety",
+                  "pe",
+                  "expert",
+                ]}
+              >
+                <WorkerDetail />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/workers/:id/edit"
+            element={
+              <ProtectedRoute allowRoles={["admin", "hr"]}>
+                <EditWorker />
               </ProtectedRoute>
             }
           />

@@ -124,7 +124,7 @@ export default function TrainingMatrix() {
   };
 
   return (
-    <div className="container-fluid p-4">
+    <div className="container-fluid p-0">
       <h3 className="mb-4 fw-bold text-dark">Training Matrix</h3>
 
       {/* Filters Section */}
