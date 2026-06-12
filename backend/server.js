@@ -11,6 +11,8 @@ import workerRoutes from "./routes/workerRoutes.js";
 import positionRoutes from "./routes/positionRoutes.js";
 import trainingRoutes from "./routes/trainingMatrix.routes.js";
 
+import complianceRoutes from "./routes/complianceRoutes.js";
+
 
 
 import safetyRouter from "./routes/safetyRoutes.js";
@@ -57,6 +59,10 @@ app.use("/api/training-matrix", trainingMatrixRoutes);
 app.use("/api/workers", workerRoutes);
 app.use("/api/positions", positionRoutes);
 app.use("/api/trainings", trainingRoutes);
+app.use("/api/compliance", complianceRoutes);
+
+
+
 
 app.use("/api/safety", safetyRouter);
 app.use("/api/medical", medicalRouter);
