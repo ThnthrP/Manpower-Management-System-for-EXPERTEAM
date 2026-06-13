@@ -618,6 +618,29 @@ export default function ComplianceDashboard() {
                         ✅ All training completed
                       </div>
                     )}
+
+                    {/* Completed Training — เพิ่มตรงนี้ */}
+                    {client.completed.length > 0 && (
+                      <div className="mt-3">
+                        <div
+                          className="fw-semibold text-success mb-2"
+                          style={{ fontSize: "13px" }}
+                        >
+                          Completed Training:
+                        </div>
+                        <div className="d-flex flex-wrap gap-2">
+                          {client.completed.map((training) => (
+                            <span
+                              key={training}
+                              className="badge bg-success bg-opacity-10 text-success px-2 py-1"
+                              style={{ fontSize: "12px" }}
+                            >
+                              ✓ {training}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ),
               )}
